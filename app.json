@@ -1,0 +1,30 @@
+{
+  "expo": {
+    "name": "Ora",
+    "slug": "oraaistudio",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "backgroundColor": "#FBF9F4"
+    },
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.ora.health"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#FBF9F4"
+      },
+      "package": "com.ora.health"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-font"
+    ],
+    "scheme": "oraaistudio",
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}
