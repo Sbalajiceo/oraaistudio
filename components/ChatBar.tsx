@@ -5,24 +5,20 @@ import OraOrb from './OraOrb';
 import { Colors } from '@/constants/colors';
 
 type Props = {
-  onOrbPress: () => void;
+  onOpen: () => void;
 };
 
-export default function ChatBar({ onOrbPress }: Props) {
+export default function ChatBar({ onOpen }: Props) {
   return (
     <View style={styles.wrap}>
-      <View style={styles.bar}>
-        <TouchableOpacity style={styles.iconBtn} hitSlop={8}>
-          <Feather name="camera" size={19} color={Colors.textLight} />
-        </TouchableOpacity>
+      <TouchableOpacity style={styles.bar} onPress={onOpen} activeOpacity={0.75}>
+        <Feather name="camera" size={19} color={Colors.textLight} />
         <Text style={styles.placeholder}>Talk to Ora...</Text>
-        <View style={styles.trailingIcons}>
-          <TouchableOpacity style={styles.iconBtn} hitSlop={8}>
-            <Feather name="mic" size={19} color={Colors.textLight} />
-          </TouchableOpacity>
-          <OraOrb size={24} onPress={onOrbPress} />
+        <View style={styles.trailing}>
+          <Feather name="mic" size={19} color={Colors.textLight} />
+          <OraOrb size={24} onPress={onOpen} />
         </View>
-      </View>
+      </TouchableOpacity>
     </View>
   );
 }
@@ -42,7 +38,7 @@ const styles = StyleSheet.create({
     borderWidth: 0.5,
     borderColor: Colors.borderLight,
     paddingVertical: 10,
-    paddingHorizontal: 12,
+    paddingHorizontal: 14,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
@@ -55,12 +51,9 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: Colors.textFaint,
   },
-  trailingIcons: {
+  trailing: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-  },
-  iconBtn: {
-    padding: 2,
+    gap: 10,
   },
 });

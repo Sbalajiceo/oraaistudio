@@ -49,7 +49,7 @@ export default function HomeScreen() {
 
         <ExpandableHealthCards onChipPress={(chip) => openVoice(chip)} />
 
-        <ChatBar onOrbPress={() => openVoice()} />
+        <ChatBar onOpen={() => openVoice()} />
         <Text style={styles.disclaimer}>
           Ora provides health information, not medical advice.
         </Text>
