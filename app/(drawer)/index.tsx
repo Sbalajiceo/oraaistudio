@@ -10,7 +10,7 @@ import { useNavigation } from '@react-navigation/native';
 import { DrawerNavigationProp } from '@react-navigation/drawer';
 import { Feather } from '@expo/vector-icons';
 import HealthSummaryCard from '@/components/HealthSummaryCard';
-import PromptChips from '@/components/PromptChips';
+import ExpandableHealthCards from '@/components/ExpandableHealthCards';
 import ChatBar from '@/components/ChatBar';
 import VoiceOverlay from '@/components/VoiceOverlay';
 import { Colors } from '@/constants/colors';
@@ -47,9 +47,7 @@ export default function HomeScreen() {
 
         <HealthSummaryCard />
 
-        <PromptChips onChipPress={(chip) => openVoice(chip)} />
-
-        <View style={styles.spacer} />
+        <ExpandableHealthCards onChipPress={(chip) => openVoice(chip)} />
 
         <ChatBar onOrbPress={() => openVoice()} />
         <Text style={styles.disclaimer}>
@@ -104,9 +102,6 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.metricBg,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  spacer: {
-    flex: 1,
   },
   disclaimer: {
     fontFamily: 'Inter_400Regular',
