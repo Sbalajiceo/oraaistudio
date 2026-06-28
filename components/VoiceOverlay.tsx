@@ -8,8 +8,9 @@ import {
   Animated,
   Easing,
   ScrollView,
-  KeyboardAvoidingView,
+  Keyboard,
   Platform,
+  KeyboardEvent,
 } from 'react-native';
 import Svg, { Circle, Defs, RadialGradient, Stop, Ellipse } from 'react-native-svg';
 import { Feather } from '@expo/vector-icons';
@@ -17,8 +18,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors } from '@/constants/colors';
 import { useAnthropic } from '@/hooks/useAnthropic';
 
-// ─── Data-aware context chips ───────────────────────────────────────────────
-// Replace with chips derived from the user's latest health data at runtime.
+// Context chips — swap for user-specific suggestions from backend/memory
 const CONTEXT_CHIPS = [
   'Explain my latest labs',
   'Is my BP okay?',
@@ -31,7 +31,7 @@ type Status = 'waiting' | 'listening' | 'responding' | 'idle';
 
 type Props = {
   visible: boolean;
-  /** When provided the overlay immediately runs this query (chip/card tap). */
+  /** Provided when a chip/card prompt is tapped — auto-runs that query. */
   initialQuery?: string;
   onClose: () => void;
 };
@@ -43,22 +43,36 @@ export default function VoiceOverlay({ visible, initialQuery, onClose }: Props) 
   const { ask } = useAnthropic();
 
   // ── Animations ──────────────────────────────────────────────────────────
-  const opacity    = useRef(new Animated.Value(0)).current;
-  const orbScale   = useRef(new Animated.Value(1)).current;
-  const waveAnims  = useRef(WAVE_DELAYS.map(() => new Animated.Value(0))).current;
-  const pulseAnim  = useRef<Animated.CompositeAnimation | null>(null);
-  const waveComp   = useRef<Animated.CompositeAnimation | null>(null);
+  const opacity  = useRef(new Animated.Value(0)).current;
+  const orbScale = useRef(new Animated.Value(1)).current;
+  const waveAnims = useRef(WAVE_DELAYS.map(() => new Animated.Value(0))).current;
+  const pulseAnim = useRef<Animated.CompositeAnimation | null>(null);
+  const waveComp  = useRef<Animated.CompositeAnimation | null>(null);
 
   // ── State ────────────────────────────────────────────────────────────────
-  const [status, setStatus]       = useState<Status>('waiting');
+  const [status, setStatus]         = useState<Status>('waiting');
   const [transcript, setTranscript] = useState('');
   const [inputText, setInputText]   = useState('');
+  const [kbHeight, setKbHeight]     = useState(0);
 
   // ── Refs ─────────────────────────────────────────────────────────────────
-  const inputRef     = useRef<TextInput>(null);
-  const typeTimer    = useRef<ReturnType<typeof setInterval> | null>(null);
+  const inputRef      = useRef<TextInput>(null);
+  const typeTimer     = useRef<ReturnType<typeof setInterval> | null>(null);
   const responseTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const lastTap      = useRef<number | null>(null);
+
+  // ── Keyboard listener (reliable on iOS inside absolute overlay) ──────────
+  useEffect(() => {
+    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+
+    const show = Keyboard.addListener(showEvent, (e: KeyboardEvent) => {
+      setKbHeight(e.endCoordinates.height);
+    });
+    const hide = Keyboard.addListener(hideEvent, () => {
+      setKbHeight(0);
+    });
+    return () => { show.remove(); hide.remove(); };
+  }, []);
 
   // ── Animation helpers ────────────────────────────────────────────────────
   const startPulse = useCallback(() => {
@@ -97,7 +111,7 @@ export default function VoiceOverlay({ visible, initialQuery, onClose }: Props) 
     responseTimer.current = null;
   }, []);
 
-  // ── Typewriter effect ────────────────────────────────────────────────────
+  // ── Typewriter ───────────────────────────────────────────────────────────
   const typeText = useCallback((text: string, onDone: () => void) => {
     let i = 0;
     setTranscript('');
@@ -114,9 +128,9 @@ export default function VoiceOverlay({ visible, initialQuery, onClose }: Props) 
 
   // ── Query runner ─────────────────────────────────────────────────────────
   const runSession = useCallback(async (query: string) => {
-    setStatus('listening');
+    Keyboard.dismiss();
     setInputText('');
-    inputRef.current?.blur();
+    setStatus('listening');
 
     await new Promise<void>((res) => {
       responseTimer.current = setTimeout(res, 600);
@@ -141,12 +155,12 @@ export default function VoiceOverlay({ visible, initialQuery, onClose }: Props) 
       } else {
         setStatus('waiting');
         setTranscript('');
-        // Small delay so overlay is visible before keyboard appears
-        setTimeout(() => inputRef.current?.focus(), 300);
+        // No auto-focus — let user choose to type or tap a chip
       }
     } else {
       clearTimers();
       stopAnimations();
+      Keyboard.dismiss();
       Animated.timing(opacity, { toValue: 0, duration: 200, useNativeDriver: true }).start();
       orbScale.setValue(1);
       waveAnims.forEach((a) => a.setValue(0));
@@ -155,17 +169,15 @@ export default function VoiceOverlay({ visible, initialQuery, onClose }: Props) 
       setStatus('waiting');
     }
     return clearTimers;
-  }, [visible, initialQuery]);
+  }, [visible, initialQuery]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Input handlers ───────────────────────────────────────────────────────
   const handleSend = useCallback(() => {
     const q = inputText.trim();
-    if (q) {
-      runSession(q);
-    }
+    if (q) runSession(q);
   }, [inputText, runSession]);
 
-  /** Return key: send if text present, dismiss if empty */
+  /** Return key: send if text present, close overlay if empty */
   const handleReturnKey = useCallback(() => {
     if (inputText.trim()) {
       handleSend();
@@ -174,24 +186,13 @@ export default function VoiceOverlay({ visible, initialQuery, onClose }: Props) 
     }
   }, [inputText, handleSend, onClose]);
 
-  /** Double-tap anywhere on the dark background → dismiss */
-  const handleBackgroundTap = useCallback(() => {
-    const now = Date.now();
-    if (lastTap.current && now - lastTap.current < 350) {
-      lastTap.current = null;
-      onClose();
-    } else {
-      lastTap.current = now;
-    }
-  }, [onClose]);
-
   const isActive = status === 'listening' || status === 'responding' || status === 'idle';
 
   const statusLabel: Record<Status, string> = {
     waiting:    'Tap a suggestion or type below',
     listening:  'Listening...',
     responding: 'Thinking...',
-    idle:       'Tap a suggestion or ask another',
+    idle:       'Ask a follow-up or tap a suggestion',
   };
 
   return (
@@ -199,31 +200,30 @@ export default function VoiceOverlay({ visible, initialQuery, onClose }: Props) 
       style={[styles.overlay, { opacity }]}
       pointerEvents={visible ? 'auto' : 'none'}
     >
-      <KeyboardAvoidingView
-        style={styles.kvFlex}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      {/* ── Top bar ──────────────────────────────────────────────────────── */}
+      <View style={[styles.topbar, { paddingTop: insets.top + 10 }]}>
+        <TouchableOpacity style={styles.backBtn} onPress={onClose} hitSlop={12}>
+          <Feather name="arrow-left" size={17} color="rgba(255,255,255,0.65)" />
+        </TouchableOpacity>
+        <Text style={styles.topTitle}>Ask Ora</Text>
+      </View>
+
+      {/* ── Scrollable centre ─────────────────────────────────────────────── */}
+      <ScrollView
+        style={styles.scroll}
+        contentContainerStyle={styles.scrollContent}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
       >
-        {/* Tap background to double-tap-dismiss (behind everything) */}
+        <Text style={styles.statusText}>{statusLabel[status]}</Text>
+
+        {/* Pulsing orb */}
         <TouchableOpacity
-          style={StyleSheet.absoluteFillObject}
-          activeOpacity={1}
-          onPress={handleBackgroundTap}
-        />
-
-        {/* ── Top bar ───────────────────────────────────────────────────── */}
-        <View style={[styles.topbar, { paddingTop: insets.top + 10 }]}>
-          <TouchableOpacity style={styles.backBtn} onPress={onClose}>
-            <Feather name="arrow-left" size={17} color="rgba(255,255,255,0.65)" />
-          </TouchableOpacity>
-          <Text style={styles.topTitle}>Ask Ora</Text>
-        </View>
-
-        {/* ── Centre ────────────────────────────────────────────────────── */}
-        <View style={styles.center} pointerEvents="box-none">
-          <Text style={styles.statusText}>{statusLabel[status]}</Text>
-
-          {/* Pulsing orb */}
-          <Animated.View style={[styles.orbWrap, { transform: [{ scale: orbScale }] }]}>
+          activeOpacity={0.85}
+          onPress={status === 'waiting' ? onClose : undefined}
+          style={styles.orbWrap}
+        >
+          <Animated.View style={{ transform: [{ scale: orbScale }] }}>
             <Svg width={108} height={108} viewBox="0 0 108 108">
               <Defs>
                 <RadialGradient id="voiceOrb" cx="35%" cy="28%" r="70%" gradientUnits="userSpaceOnUse">
@@ -237,70 +237,70 @@ export default function VoiceOverlay({ visible, initialQuery, onClose }: Props) 
               <Ellipse cx="42" cy="36" rx="13" ry="8" fill="rgba(255,255,255,0.22)" transform="rotate(-18 42 36)" />
             </Svg>
           </Animated.View>
-
-          {/* Wave bars — visible while listening / responding */}
-          {isActive && status !== 'idle' && (
-            <View style={styles.waveWrap}>
-              {waveAnims.map((anim, i) => {
-                const h = anim.interpolate({ inputRange: [0, 1], outputRange: [6, 28] });
-                return <Animated.View key={i} style={[styles.waveBar, { height: h }]} />;
-              })}
-            </View>
+          {status === 'waiting' && (
+            <Text style={styles.orbHint}>tap to close</Text>
           )}
+        </TouchableOpacity>
 
-          {/* Transcript / response */}
-          {isActive && (
-            <ScrollView
-              style={styles.transcriptScroll}
-              contentContainerStyle={styles.transcriptContent}
-              showsVerticalScrollIndicator={false}
-              pointerEvents="none"
-            >
-              <Text style={styles.transcript}>{transcript}</Text>
-            </ScrollView>
-          )}
-
-          {/* Context chips — shown in waiting mode and after idle */}
-          {(status === 'waiting' || status === 'idle') && (
-            <View style={styles.chips} pointerEvents="box-none">
-              {CONTEXT_CHIPS.map((chip) => (
-                <TouchableOpacity
-                  key={chip}
-                  style={styles.chip}
-                  onPress={() => runSession(chip)}
-                  activeOpacity={0.7}
-                >
-                  <Text style={styles.chipText}>{chip}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          )}
-        </View>
-
-        {/* ── Bottom text input ──────────────────────────────────────────── */}
-        <View style={[styles.inputRow, { marginBottom: insets.bottom + 20 }]}>
-          <View style={styles.inputWrap}>
-            <TextInput
-              ref={inputRef}
-              style={styles.input}
-              value={inputText}
-              onChangeText={setInputText}
-              placeholder="Ask anything..."
-              placeholderTextColor="rgba(255,255,255,0.25)"
-              returnKeyType="send"
-              onSubmitEditing={handleReturnKey}
-              blurOnSubmit={false}
-              multiline={false}
-            />
-            {inputText.trim().length > 0 && (
-              <TouchableOpacity style={styles.sendBtn} onPress={handleSend} activeOpacity={0.8}>
-                <Feather name="arrow-up" size={15} color="white" />
-              </TouchableOpacity>
-            )}
+        {/* Wave bars while listening / processing */}
+        {(status === 'listening' || status === 'responding') && (
+          <View style={styles.waveWrap}>
+            {waveAnims.map((anim, i) => {
+              const h = anim.interpolate({ inputRange: [0, 1], outputRange: [6, 28] });
+              return <Animated.View key={i} style={[styles.waveBar, { height: h }]} />;
+            })}
           </View>
-          <Text style={styles.hint}>Double-tap background · Return to dismiss</Text>
+        )}
+
+        {/* Transcript / response text */}
+        {isActive && transcript.length > 0 && (
+          <Text style={styles.transcript}>{transcript}</Text>
+        )}
+
+        {/* Context chips — waiting and after response */}
+        {(status === 'waiting' || status === 'idle') && (
+          <View style={styles.chips}>
+            {CONTEXT_CHIPS.map((chip) => (
+              <TouchableOpacity
+                key={chip}
+                style={styles.chip}
+                onPress={() => runSession(chip)}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.chipText}>{chip}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        )}
+      </ScrollView>
+
+      {/* ── Text input (keyboard-aware) ──────────────────────────────────── */}
+      <View style={[styles.inputArea, { paddingBottom: Math.max(insets.bottom, 16) + kbHeight }]}>
+        <View style={styles.inputRow}>
+          <TextInput
+            ref={inputRef}
+            style={styles.input}
+            value={inputText}
+            onChangeText={setInputText}
+            placeholder="Ask anything..."
+            placeholderTextColor="rgba(255,255,255,0.28)"
+            returnKeyType="send"
+            onSubmitEditing={handleReturnKey}
+            blurOnSubmit={false}
+            multiline={false}
+          />
+          {inputText.trim().length > 0 ? (
+            <TouchableOpacity style={styles.sendBtn} onPress={handleSend} activeOpacity={0.8}>
+              <Feather name="arrow-up" size={15} color="white" />
+            </TouchableOpacity>
+          ) : (
+            <TouchableOpacity style={styles.sendBtnGhost} onPress={onClose} activeOpacity={0.7}>
+              <Feather name="x" size={15} color="rgba(255,255,255,0.35)" />
+            </TouchableOpacity>
+          )}
         </View>
-      </KeyboardAvoidingView>
+        <Text style={styles.hint}>Return to send · Return on empty to dismiss</Text>
+      </View>
     </Animated.View>
   );
 }
@@ -311,9 +311,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.voiceBg,
     borderRadius: 36,
     zIndex: 20,
-  },
-  kvFlex: {
-    flex: 1,
+    flexDirection: 'column',
   },
 
   // Top bar
@@ -321,6 +319,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 18,
+    paddingBottom: 4,
     gap: 12,
   },
   backBtn: {
@@ -339,12 +338,15 @@ const styles = StyleSheet.create({
     color: 'rgba(255,255,255,0.4)',
   },
 
-  // Centre
-  center: {
+  // Scroll
+  scroll: {
     flex: 1,
+  },
+  scrollContent: {
     alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 20,
+    paddingTop: 32,
+    paddingBottom: 16,
+    paddingHorizontal: 24,
   },
   statusText: {
     fontFamily: 'Inter_400Regular',
@@ -355,14 +357,24 @@ const styles = StyleSheet.create({
     marginBottom: 28,
     textAlign: 'center',
   },
+
+  // Orb
   orbWrap: {
-    width: 108,
-    height: 108,
+    alignItems: 'center',
     shadowColor: Colors.purple,
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.55,
     shadowRadius: 20,
     elevation: 12,
+    marginBottom: 4,
+  },
+  orbHint: {
+    fontFamily: 'Inter_400Regular',
+    fontSize: 9,
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+    color: 'rgba(255,255,255,0.2)',
+    marginTop: 8,
   },
 
   // Waves
@@ -380,66 +392,62 @@ const styles = StyleSheet.create({
   },
 
   // Transcript
-  transcriptScroll: {
-    maxHeight: 110,
-    marginTop: 18,
-    width: '100%',
-  },
-  transcriptContent: {
-    alignItems: 'center',
-  },
   transcript: {
     fontFamily: 'Lora_400Regular_Italic',
     fontSize: 15,
     color: 'rgba(255,255,255,0.82)',
     textAlign: 'center',
     lineHeight: 24,
-    paddingHorizontal: 10,
+    marginTop: 20,
+    maxWidth: 280,
   },
 
-  // Context chips
+  // Chips
   chips: {
     marginTop: 28,
-    gap: 9,
+    gap: 10,
     width: '100%',
     alignItems: 'center',
   },
   chip: {
     backgroundColor: 'rgba(123,110,246,0.18)',
     borderWidth: 0.5,
-    borderColor: 'rgba(123,110,246,0.4)',
+    borderColor: 'rgba(123,110,246,0.45)',
     borderRadius: 20,
-    paddingVertical: 9,
-    paddingHorizontal: 18,
+    paddingVertical: 10,
+    paddingHorizontal: 20,
   },
   chipText: {
     fontFamily: 'Inter_400Regular',
     fontSize: 13,
-    color: 'rgba(255,255,255,0.75)',
+    color: 'rgba(255,255,255,0.78)',
     textAlign: 'center',
   },
 
-  // Text input row
-  inputRow: {
+  // Input area
+  inputArea: {
     paddingHorizontal: 16,
-    gap: 8,
+    paddingTop: 10,
+    gap: 6,
+    borderTopWidth: 0.5,
+    borderTopColor: 'rgba(255,255,255,0.07)',
   },
-  inputWrap: {
+  inputRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.07)',
+    backgroundColor: 'rgba(255,255,255,0.08)',
     borderWidth: 0.5,
-    borderColor: 'rgba(255,255,255,0.14)',
+    borderColor: 'rgba(255,255,255,0.15)',
     borderRadius: 24,
     paddingHorizontal: 16,
-    paddingVertical: 10,
+    paddingVertical: Platform.OS === 'ios' ? 12 : 8,
     gap: 8,
   },
   input: {
     flex: 1,
     fontFamily: 'Inter_400Regular',
     fontSize: 15,
-    color: 'rgba(255,255,255,0.88)',
+    color: 'rgba(255,255,255,0.9)',
     padding: 0,
     margin: 0,
   },
@@ -451,11 +459,19 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  sendBtnGhost: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   hint: {
     fontFamily: 'Inter_400Regular',
     fontSize: 10,
-    color: 'rgba(255,255,255,0.18)',
+    color: 'rgba(255,255,255,0.16)',
     textAlign: 'center',
-    letterSpacing: 0.3,
+    letterSpacing: 0.2,
+    paddingBottom: 4,
   },
 });

@@ -58,7 +58,10 @@ export default function HomeScreen() {
       <VoiceOverlay
         visible={voiceOpen}
         initialQuery={voiceQuery}
-        onClose={() => setVoiceOpen(false)}
+        onClose={() => {
+          setVoiceOpen(false);
+          setVoiceQuery(undefined); // reset so next bar-tap shows waiting state
+        }}
       />
     </View>
   );
