@@ -1,12 +1,28 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Feather } from '@expo/vector-icons';
-import OraOrb from './OraOrb';
+import Svg, { Circle, Defs, RadialGradient, Stop } from 'react-native-svg';
 import { Colors } from '@/constants/colors';
 
 type Props = {
   onOpen: () => void;
 };
+
+function OrbDot({ size }: { size: number }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24">
+      <Defs>
+        <RadialGradient id="orbGrad2" cx="38%" cy="32%" r="70%" gradientUnits="userSpaceOnUse">
+          <Stop offset="0%" stopColor="#D4CEFF" />
+          <Stop offset="45%" stopColor="#7B6EF6" />
+          <Stop offset="75%" stopColor="#4A3ABF" />
+          <Stop offset="100%" stopColor="#2E228A" />
+        </RadialGradient>
+      </Defs>
+      <Circle cx="12" cy="12" r="12" fill="url(#orbGrad2)" />
+    </Svg>
+  );
+}
 
 export default function ChatBar({ onOpen }: Props) {
   return (
@@ -14,9 +30,9 @@ export default function ChatBar({ onOpen }: Props) {
       <TouchableOpacity style={styles.bar} onPress={onOpen} activeOpacity={0.75}>
         <Feather name="camera" size={19} color={Colors.textLight} />
         <Text style={styles.placeholder}>Talk to Ora...</Text>
-        <View style={styles.trailing}>
+        <View style={styles.trailing} pointerEvents="none">
           <Feather name="mic" size={19} color={Colors.textLight} />
-          <OraOrb size={24} onPress={onOpen} />
+          <OrbDot size={24} />
         </View>
       </TouchableOpacity>
     </View>
