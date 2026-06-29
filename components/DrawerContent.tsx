@@ -29,9 +29,9 @@ export default function DrawerContent({ navigation }: DrawerContentComponentProp
       icon: <MaterialCommunityIcons name="heart-pulse" size={16} color="inherit" />,
     },
     {
-      label: 'Vitals',
-      route: '/vitals',
-      icon: <Feather name="activity" size={16} color="inherit" />,
+      label: 'Health Plan',
+      route: '/health-plan',
+      icon: <MaterialCommunityIcons name="clipboard-pulse-outline" size={16} color="inherit" />,
     },
     {
       label: 'Reminders',

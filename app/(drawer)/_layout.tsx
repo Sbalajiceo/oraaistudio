@@ -23,7 +23,7 @@ export default function DrawerLayout() {
       }}
     >
       <Drawer.Screen name="index" options={{ drawerLabel: 'My health' }} />
-      <Drawer.Screen name="vitals" options={{ drawerLabel: 'Vitals' }} />
+      <Drawer.Screen name="health-plan" options={{ drawerLabel: '🗂️ Health Plan' }} />
       <Drawer.Screen name="reminders" options={{ drawerLabel: 'Reminders' }} />
       <Drawer.Screen name="insights" options={{ drawerLabel: 'Insights' }} />
       <Drawer.Screen name="me" options={{ drawerLabel: 'Me' }} />

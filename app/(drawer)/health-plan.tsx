@@ -2,11 +2,11 @@ import React from 'react';
 import { View, Text, StyleSheet, SafeAreaView } from 'react-native';
 import { Colors } from '@/constants/colors';
 
-export default function VitalsScreen() {
+export default function HealthPlanScreen() {
   return (
     <SafeAreaView style={styles.root}>
       <View style={styles.center}>
-        <Text style={styles.label}>Vitals</Text>
+        <Text style={styles.label}>Health Plan</Text>
         <Text style={styles.sub}>Coming soon</Text>
       </View>
     </SafeAreaView>
