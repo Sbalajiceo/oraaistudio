@@ -26,10 +26,4 @@ export const Colors = {
 
   metricBg: '#F0EDE8',
   voiceBg: '#0E0C1E',
-
-  gold: '#F3CB6B',
-  goldDeep: '#D9A83E',
-  overlayCard: 'rgba(255,255,255,0.14)',
-  overlayCardBorder: 'rgba(255,255,255,0.22)',
-  overlayCardSoft: 'rgba(255,255,255,0.08)',
 } as const;

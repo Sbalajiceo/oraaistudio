@@ -5,9 +5,9 @@ import type { Reminder } from '@/contexts/RemindersContext';
 import { formatTime12h } from '@/utils/time';
 import ReminderIcon from './ReminderIcon';
 
-const CARD_W = 176;
-const CARD_H = 210;
-const GAP = 14;
+const CARD_W = 160;
+const CARD_H = 188;
+const GAP = 12;
 const ITEM_SIZE = CARD_W + GAP;
 
 export default function ReminderCardStack({
@@ -23,9 +23,8 @@ export default function ReminderCardStack({
 
   if (reminders.length === 0) {
     return (
-      <View style={[styles.empty, { width: CARD_W, height: CARD_H, marginLeft: sidePad }]}>
-        <Text style={styles.emptyEmoji}>✓</Text>
-        <Text style={styles.emptyText}>All done for today</Text>
+      <View style={[styles.empty, { width: width - 40, marginLeft: 20 }]}>
+        <Text style={styles.emptyText}>All done for today ✓</Text>
       </View>
     );
   }
@@ -46,22 +45,12 @@ export default function ReminderCardStack({
         const inputRange = [(i - 1) * ITEM_SIZE, i * ITEM_SIZE, (i + 1) * ITEM_SIZE];
         const scale = scrollX.interpolate({
           inputRange,
-          outputRange: [0.86, 1, 0.86],
-          extrapolate: 'clamp',
-        });
-        const translateY = scrollX.interpolate({
-          inputRange,
-          outputRange: [22, 0, 22],
-          extrapolate: 'clamp',
-        });
-        const rotate = scrollX.interpolate({
-          inputRange,
-          outputRange: ['-8deg', '0deg', '8deg'],
+          outputRange: [0.92, 1, 0.92],
           extrapolate: 'clamp',
         });
         const opacity = scrollX.interpolate({
           inputRange,
-          outputRange: [0.55, 1, 0.55],
+          outputRange: [0.6, 1, 0.6],
           extrapolate: 'clamp',
         });
 
@@ -73,7 +62,7 @@ export default function ReminderCardStack({
             style={{
               width: CARD_W,
               marginRight: i === reminders.length - 1 ? 0 : GAP,
-              transform: [{ scale }, { translateY }, { rotate }],
+              transform: [{ scale }],
               opacity,
             }}
           >
@@ -88,7 +77,7 @@ export default function ReminderCardStack({
               </Text>
 
               <View style={styles.iconCircle}>
-                <ReminderIcon icon={r.icon} size={30} color={Colors.purple} />
+                <ReminderIcon icon={r.icon} size={26} color={Colors.purple} />
               </View>
 
               <View>
@@ -110,63 +99,56 @@ const styles = StyleSheet.create({
     width: CARD_W,
     height: CARD_H,
     backgroundColor: Colors.white,
-    borderRadius: 26,
-    padding: 18,
+    borderRadius: 20,
+    borderWidth: 0.5,
+    borderColor: Colors.border,
+    padding: 16,
     justifyContent: 'space-between',
-    shadowColor: '#1C1450',
-    shadowOffset: { width: 0, height: 14 },
-    shadowOpacity: 0.28,
-    shadowRadius: 20,
-    elevation: 10,
   },
   time: {
-    fontFamily: 'Inter_700Bold',
-    fontSize: 20,
-    color: Colors.purpleDeep,
+    fontFamily: 'Inter_600SemiBold',
+    fontSize: 17,
+    color: Colors.textDark,
   },
   period: {
-    fontFamily: 'Inter_500Medium',
-    fontSize: 12,
+    fontFamily: 'Inter_400Regular',
+    fontSize: 11,
     color: Colors.textLight,
   },
   iconCircle: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
+    width: 52,
+    height: 52,
+    borderRadius: 26,
     backgroundColor: Colors.purpleBg,
     alignItems: 'center',
     justifyContent: 'center',
     alignSelf: 'center',
   },
   title: {
-    fontFamily: 'Inter_600SemiBold',
-    fontSize: 15,
+    fontFamily: 'Inter_500Medium',
+    fontSize: 13,
     color: Colors.textDark,
     textAlign: 'center',
   },
   detail: {
     fontFamily: 'Inter_400Regular',
-    fontSize: 12,
+    fontSize: 11,
     color: Colors.textLight,
     textAlign: 'center',
-    marginTop: 2,
+    marginTop: 1,
   },
   empty: {
-    backgroundColor: Colors.overlayCard,
-    borderWidth: 1,
-    borderColor: Colors.overlayCardBorder,
-    borderRadius: 26,
+    height: CARD_H,
+    backgroundColor: Colors.white,
+    borderWidth: 0.5,
+    borderColor: Colors.border,
+    borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 10,
-  },
-  emptyEmoji: {
-    fontSize: 28,
-    color: Colors.gold,
   },
   emptyText: {
     fontFamily: 'Inter_500Medium',
     fontSize: 13,
-    color: 'rgba(255,255,255,0.85)',
+    color: Colors.textLight,
   },
 });

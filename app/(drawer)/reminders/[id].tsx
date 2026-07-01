@@ -1,14 +1,12 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Alert } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { LinearGradient } from 'expo-linear-gradient';
-import { StatusBar } from 'expo-status-bar';
+import { View, Text, StyleSheet, TouchableOpacity, Alert, SafeAreaView } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { Colors } from '@/constants/colors';
 import { useReminders } from '@/contexts/RemindersContext';
 import { formatTime12h } from '@/utils/time';
 import ReminderIcon from '@/components/reminders/ReminderIcon';
+import PrimaryButton from '@/components/reminders/PrimaryButton';
 
 export default function ReminderDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -19,18 +17,12 @@ export default function ReminderDetailScreen() {
 
   if (!reminder) {
     return (
-      <View style={styles.root}>
-        <LinearGradient
-          colors={[Colors.purple, Colors.purpleDark, Colors.purpleDeep]}
-          style={StyleSheet.absoluteFill}
-        />
-        <SafeAreaView style={styles.notFound}>
-          <Text style={styles.notFoundText}>Reminder not found</Text>
-          <TouchableOpacity onPress={() => router.back()}>
-            <Text style={styles.backLink}>Go back</Text>
-          </TouchableOpacity>
-        </SafeAreaView>
-      </View>
+      <SafeAreaView style={styles.notFoundRoot}>
+        <Text style={styles.notFoundText}>Reminder not found</Text>
+        <TouchableOpacity onPress={() => router.back()}>
+          <Text style={styles.backLink}>Go back</Text>
+        </TouchableOpacity>
+      </SafeAreaView>
     );
   }
 
@@ -51,161 +43,128 @@ export default function ReminderDetailScreen() {
   };
 
   return (
-    <View style={styles.root}>
-      <StatusBar style="light" />
-      <LinearGradient
-        colors={[Colors.purple, Colors.purpleDark, Colors.purpleDeep]}
-        style={StyleSheet.absoluteFill}
-      />
+    <SafeAreaView style={styles.root}>
+      <View style={styles.topbar}>
+        <TouchableOpacity style={styles.iconBtn} onPress={() => router.back()} hitSlop={8}>
+          <Feather name="chevron-left" size={20} color={Colors.textMedium} />
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.iconBtn} onPress={confirmDelete} hitSlop={8}>
+          <Feather name="trash-2" size={16} color={Colors.textLight} />
+        </TouchableOpacity>
+      </View>
 
-      <SafeAreaView style={styles.safe}>
-        <View style={styles.topbar}>
-          <TouchableOpacity style={styles.backBtn} onPress={() => router.back()} hitSlop={8}>
-            <Feather name="chevron-left" size={20} color="#FFFFFF" />
-          </TouchableOpacity>
-          <TouchableOpacity onPress={confirmDelete} hitSlop={8}>
-            <Feather name="trash-2" size={18} color="rgba(255,255,255,0.7)" />
-          </TouchableOpacity>
+      <View style={styles.hero}>
+        <Text style={styles.time}>
+          {hm}
+          <Text style={styles.period}> {period}</Text>
+        </Text>
+
+        <View style={styles.iconCircle}>
+          <ReminderIcon icon={reminder.icon} size={36} color={Colors.purple} />
         </View>
 
-        <View style={styles.hero}>
-          <Text style={styles.time}>
-            {hm}
-            <Text style={styles.period}> {period}</Text>
-          </Text>
+        <Text style={styles.title}>{reminder.title}</Text>
+        {reminder.detail ? <Text style={styles.detail}>{reminder.detail}</Text> : null}
+      </View>
 
-          <View style={styles.iconCircle}>
-            <ReminderIcon icon={reminder.icon} size={40} color={Colors.purple} />
-          </View>
-
-          <Text style={styles.title}>{reminder.title}</Text>
-          {reminder.detail ? <Text style={styles.detail}>{reminder.detail}</Text> : null}
+      {reminder.instructions ? (
+        <View style={styles.instructionsCard}>
+          <Text style={styles.instructionsLabel}>Instructions</Text>
+          <Text style={styles.instructions}>{reminder.instructions}</Text>
         </View>
+      ) : null}
 
-        {reminder.instructions ? (
-          <View style={styles.instructionsCard}>
-            <Text style={styles.instructionsLabel}>Instructions</Text>
-            <Text style={styles.instructions}>{reminder.instructions}</Text>
-          </View>
-        ) : null}
-
-        <View style={styles.footer}>
-          <TouchableOpacity
-            style={[styles.ctaBtn, reminder.done && styles.ctaBtnDone]}
-            activeOpacity={0.85}
-            onPress={() => toggleDone(reminder.id)}
-          >
-            <Feather
-              name={reminder.done ? 'rotate-ccw' : 'check'}
-              size={17}
-              color={Colors.purpleDeep}
-            />
-            <Text style={styles.ctaText}>
-              {reminder.done ? 'Mark as not done' : 'Mark as done'}
-            </Text>
-          </TouchableOpacity>
-        </View>
-      </SafeAreaView>
-    </View>
+      <View style={styles.footer}>
+        <PrimaryButton
+          label={reminder.done ? 'Mark as not done' : 'Mark as done'}
+          icon={reminder.done ? 'rotate-ccw' : 'check'}
+          onPress={() => toggleDone(reminder.id)}
+        />
+      </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1 },
-  safe: { flex: 1, paddingHorizontal: 20 },
+  root: { flex: 1, backgroundColor: Colors.background, paddingHorizontal: 20 },
   topbar: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingTop: 12,
   },
-  backBtn: {
+  iconBtn: {
     width: 36,
     height: 36,
     borderRadius: 10,
-    backgroundColor: Colors.overlayCard,
+    backgroundColor: Colors.metricBg,
     alignItems: 'center',
     justifyContent: 'center',
   },
   hero: {
     alignItems: 'center',
-    marginTop: 36,
-    gap: 14,
+    marginTop: 28,
+    gap: 12,
   },
   time: {
-    fontFamily: 'Inter_700Bold',
-    fontSize: 34,
-    color: '#FFFFFF',
+    fontFamily: 'Inter_600SemiBold',
+    fontSize: 30,
+    color: Colors.textDark,
   },
   period: {
-    fontFamily: 'Inter_500Medium',
-    fontSize: 16,
-    color: 'rgba(255,255,255,0.7)',
+    fontFamily: 'Inter_400Regular',
+    fontSize: 14,
+    color: Colors.textLight,
   },
   iconCircle: {
-    width: 96,
-    height: 96,
-    borderRadius: 48,
-    backgroundColor: Colors.white,
+    width: 84,
+    height: 84,
+    borderRadius: 42,
+    backgroundColor: Colors.purpleBg,
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 8,
+    marginTop: 6,
   },
   title: {
-    fontFamily: 'Inter_600SemiBold',
+    fontFamily: 'Lora_400Regular',
     fontSize: 20,
-    color: '#FFFFFF',
+    color: Colors.textDark,
     textAlign: 'center',
   },
   detail: {
     fontFamily: 'Inter_400Regular',
-    fontSize: 14,
-    color: 'rgba(255,255,255,0.75)',
+    fontSize: 13,
+    color: Colors.textLight,
   },
   instructionsCard: {
-    marginTop: 32,
+    marginTop: 28,
     backgroundColor: Colors.white,
-    borderRadius: 22,
-    padding: 20,
+    borderRadius: 20,
+    borderWidth: 0.5,
+    borderColor: Colors.border,
+    padding: 18,
   },
   instructionsLabel: {
     fontFamily: 'Inter_500Medium',
     fontSize: 11,
     textTransform: 'uppercase',
-    letterSpacing: 1,
+    letterSpacing: 0.9,
     color: Colors.textLight,
     marginBottom: 8,
   },
   instructions: {
     fontFamily: 'Inter_400Regular',
-    fontSize: 15,
-    lineHeight: 22,
+    fontSize: 14,
+    lineHeight: 21,
     color: Colors.textDark,
   },
   footer: {
     marginTop: 'auto',
-    paddingBottom: 28,
+    paddingBottom: 24,
   },
-  ctaBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    backgroundColor: Colors.gold,
-    borderRadius: 16,
-    paddingVertical: 16,
-  },
-  ctaBtnDone: {
-    backgroundColor: Colors.purpleLight,
-  },
-  ctaText: {
-    fontFamily: 'Inter_600SemiBold',
-    fontSize: 14,
-    color: Colors.purpleDeep,
-    letterSpacing: 0.3,
-  },
-  notFound: {
+  notFoundRoot: {
     flex: 1,
+    backgroundColor: Colors.background,
     alignItems: 'center',
     justifyContent: 'center',
     gap: 10,
@@ -213,11 +172,11 @@ const styles = StyleSheet.create({
   notFoundText: {
     fontFamily: 'Inter_500Medium',
     fontSize: 15,
-    color: '#FFFFFF',
+    color: Colors.textDark,
   },
   backLink: {
     fontFamily: 'Inter_500Medium',
     fontSize: 13,
-    color: Colors.gold,
+    color: Colors.purple,
   },
 });
