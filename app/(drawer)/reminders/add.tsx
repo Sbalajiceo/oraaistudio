@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -9,7 +9,7 @@ import {
   Alert,
   SafeAreaView,
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { Colors } from '@/constants/colors';
 import { useReminders, ReminderIcon as ReminderIconKey } from '@/contexts/RemindersContext';
@@ -20,13 +20,25 @@ const ICON_OPTIONS: ReminderIconKey[] = ['pill', 'meal', 'water', 'walk', 'sleep
 
 export default function AddReminderScreen() {
   const router = useRouter();
-  const { addReminder } = useReminders();
+  const { id } = useLocalSearchParams<{ id?: string }>();
+  const { addReminder, updateReminder, getById } = useReminders();
+  const editing = id ? getById(id) : undefined;
 
   const [icon, setIcon] = useState<ReminderIconKey>('pill');
   const [title, setTitle] = useState('');
   const [detail, setDetail] = useState('');
   const [time, setTime] = useState('');
   const [instructions, setInstructions] = useState('');
+
+  useEffect(() => {
+    if (editing) {
+      setIcon(editing.icon);
+      setTitle(editing.title);
+      setDetail(editing.detail ?? '');
+      setTime(editing.time);
+      setInstructions(editing.instructions ?? '');
+    }
+  }, [editing?.id]);
 
   const submit = () => {
     const trimmedTitle = title.trim();
@@ -35,13 +47,18 @@ export default function AddReminderScreen() {
       Alert.alert('Missing info', 'Please add a title and a time in HH:MM format (e.g. 15:00).');
       return;
     }
-    addReminder({
+    const input = {
       title: trimmedTitle,
       time: trimmedTime,
       detail: detail.trim() || undefined,
       instructions: instructions.trim() || undefined,
       icon,
-    });
+    };
+    if (editing) {
+      updateReminder(editing.id, input);
+    } else {
+      addReminder(input);
+    }
     router.back();
   };
 
@@ -51,7 +68,7 @@ export default function AddReminderScreen() {
         <TouchableOpacity style={styles.iconBtn} onPress={() => router.back()} hitSlop={8}>
           <Feather name="chevron-left" size={20} color={Colors.textMedium} />
         </TouchableOpacity>
-        <Text style={styles.heading}>New reminder</Text>
+        <Text style={styles.heading}>{editing ? 'Edit reminder' : 'New reminder'}</Text>
         <View style={{ width: 36 }} />
       </View>
 
@@ -113,7 +130,11 @@ export default function AddReminderScreen() {
         />
 
         <View style={styles.ctaWrap}>
-          <PrimaryButton label="Add reminder" icon="plus" onPress={submit} />
+          <PrimaryButton
+            label={editing ? 'Save changes' : 'Add reminder'}
+            icon={editing ? 'check' : 'plus'}
+            onPress={submit}
+          />
         </View>
       </ScrollView>
     </SafeAreaView>

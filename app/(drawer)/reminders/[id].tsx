@@ -48,9 +48,18 @@ export default function ReminderDetailScreen() {
         <TouchableOpacity style={styles.iconBtn} onPress={() => router.back()} hitSlop={8}>
           <Feather name="chevron-left" size={20} color={Colors.textMedium} />
         </TouchableOpacity>
-        <TouchableOpacity style={styles.iconBtn} onPress={confirmDelete} hitSlop={8}>
-          <Feather name="trash-2" size={16} color={Colors.textLight} />
-        </TouchableOpacity>
+        <View style={styles.topbarActions}>
+          <TouchableOpacity
+            style={styles.iconBtn}
+            onPress={() => router.push(`/reminders/add?id=${reminder.id}`)}
+            hitSlop={8}
+          >
+            <Feather name="edit-2" size={15} color={Colors.textLight} />
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.iconBtn} onPress={confirmDelete} hitSlop={8}>
+            <Feather name="trash-2" size={16} color={Colors.textLight} />
+          </TouchableOpacity>
+        </View>
       </View>
 
       <View style={styles.hero}>
@@ -100,6 +109,10 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.metricBg,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  topbarActions: {
+    flexDirection: 'row',
+    gap: 10,
   },
   hero: {
     alignItems: 'center',
